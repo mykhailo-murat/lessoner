@@ -63,7 +63,7 @@ class MyCommentsView(generics.ListAPIView):
 @api_view(['GET'])
 @permission_classes([permissions.AllowAny])
 def post_comments(request, post_id):
-    post = get_object_or_404(Post, pk=post_id, status='published')
+    post = get_object_or_404(Post, id=post_id, status='published')
     comments = Comment.objects.filter(post=post, parent=None, is_active=True).select_related('author').prefetch_related('replies__author').order_by(
         '-created_at')
 

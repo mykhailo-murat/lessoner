@@ -6,7 +6,7 @@ from apps.main.models import Category, Post
 # Register your models here.
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
-    list_display = ('name', 'slug', 'post_count', 'created_at')
+    list_display = ('name', 'slug', 'posts_count', 'created_at')
     list_filter = ('created_at',)
     search_fields = ('name', 'description')
     prepopulated_fields = {'slug': ('name',)}

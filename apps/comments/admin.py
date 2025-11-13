@@ -17,7 +17,7 @@ class CommentAdmin(admin.ModelAdmin):
             'fields': ('post', 'author', 'parent', 'content')
         }),
         ('Status', {
-            'fields': ('is_active')
+            'fields': ('is_active',)
         }),
         ('Timestamps', {
             'fields': ('created_at', 'updated_at'),
@@ -37,7 +37,7 @@ class CommentAdmin(admin.ModelAdmin):
 
     def parent_comment(self, obj):
         if obj.parent:
-            return f'Reply to: {obj.parent.cotent[:30]}...'
+            return f'Reply to: {obj.parent.content[:30]}...'
         return "Main comment"
 
     parent_comment.short_description = 'Parent'
