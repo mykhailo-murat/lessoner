@@ -27,7 +27,7 @@ class PostListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Post
         fields = [
-            'id', 'title', 'slug', 'content', 'image', 'category', 'author', 'status', 'created_at', 'updated_at', 'views_count', 'comments_count']
+            'id', 'title', 'slug', 'content', 'image', 'categories', 'author', 'status', 'created_at', 'updated_at', 'views_count', 'comments_count']
         read_only_fields = ['slug', 'created_at', 'views_count', 'author', 'comments_count']
 
     def to_representation(self, instance):
