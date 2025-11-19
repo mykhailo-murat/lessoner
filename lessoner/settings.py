@@ -246,3 +246,31 @@ SIMPLE_JWT = {
 }
 
 AUTH_USER_MODEL = 'accounts.User'
+
+FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:5173')
+
+EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
+EMAIL_HOST = config('EMAIL_HOST', default='localhost')
+EMAIL_PORT = config('EMAIL_PORT', default='587', cast=int)
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='<EMAIL>')
+
+CELERY_BROKER_URL = config('CELERY_BROKER_URL', default='redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND', default='redis://localhost:6379/')
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_ACCEPT_CONTENT = ['json']
+
+CELERY_BEAT_SCHEDULE = {
+    'check-expired-subscriptions': {
+        'task': 'apps.subscribe.tasks.check_expired_subscriptions',
+        'schedule': 3600.0,
+    },
+    'send-subscription-expiry-reminders': {
+        'task': 'apps.subscribe.tasks.send_subscription_expiry_reminders',
+        'schedule': 86400.0,
+    },
+}
