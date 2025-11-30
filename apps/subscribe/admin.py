@@ -152,7 +152,7 @@ class PinnedPostAdmin(admin.ModelAdmin):
     list_display = (
         'user_link', 'post_link', 'subscriptions_status', 'pinned_at'
     )
-    list_filter = ('pinned_at', 'user__subscriptions__status')
+    list_filter = ('pinned_at', 'user__subscription__status')
     search_fields = ('user__username', 'user__title')
     readonly_fields = ('pinned_at',)
     raw_id_fields = ('user', 'post')

@@ -51,38 +51,38 @@ class Payment(models.Model):
             models.Index(fields=['created_at']),
         ]
 
-        def __str__(self):
-            return f'Payment {self.id} - {self.user.username} - ${self.amount}  ({self.status})'
+    def __str__(self):
+        return f'Payment {self.id} - {self.user.username} - ${self.amount}  ({self.status})'
 
-        @property
-        def is_successful(self):
-            return self.status == 'succeeded'
+    @property
+    def is_successful(self):
+        return self.status == 'succeeded'
 
-        @property
-        def is_pending(self):
-            return self.status in ['pending', 'processing']
+    @property
+    def is_pending(self):
+        return self.status in ['pending', 'processing']
 
-        @property
-        def can_be_refunded(self):
-            return self.status == 'succeeded' and self.payment_method == 'stripe'
+    @property
+    def can_be_refunded(self):
+        return self.status == 'succeeded' and self.payment_method == 'stripe'
 
-        def mark_as_succeeded(self):
-            from django.utils import timezone
-            self.status = 'succeeded'
-            self.processed_at = timezone.now()
-            self.save()
+    def mark_as_succeeded(self):
+        from django.utils import timezone
+        self.status = 'succeeded'
+        self.processed_at = timezone.now()
+        self.save()
 
-        def mark_as_failed(self, reason=None):
-            from django.utils import timezone
-            self.status = 'failed'
-            self.processed_at = timezone.now()
-            if reason:
-                self.metadata['failure_reason'] = reason
-            self.save()
+    def mark_as_failed(self, reason=None):
+        from django.utils import timezone
+        self.status = 'failed'
+        self.processed_at = timezone.now()
+        if reason:
+            self.metadata['failure_reason'] = reason
+        self.save()
 
-        @property
-        def is_canceled(self):
-            return self.status == 'canceled'
+    @property
+    def is_canceled(self):
+        return self.status == 'canceled'
 
 
 class PaymentAttempt(models.Model):
@@ -140,3 +140,53 @@ class Refund(models.Model):
         self.status = 'succeeded'
         self.processed_at = timezone.now()
         self.save()
+
+class WebhookEvent(models.Model):
+    PROVIDER_CHOICES = [
+        ('stripe', 'Stripe'),
+        ('paypal', 'Paypal'),
+    ]
+
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('processed', 'Processed'),
+        ('failed', 'Failed'),
+        ('ignored', 'Ignored'),
+    ]
+
+    provider = models.CharField(max_length=20, choices=PROVIDER_CHOICES)
+    event_id = models.CharField(max_length=255, unique=True)
+    event_type = models.CharField(max_length=100)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+
+    data = models.JSONField()
+    processed_at = models.DateTimeField(null=True, blank=True)
+    error_message = models.TextField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'webhook_events'
+        verbose_name = 'Webhook Event'
+        verbose_name_plural = 'Webhook Events'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['provider', 'event_type']),
+            models.Index(fields=['status']),
+        ]
+
+    def __str__(self):
+        return f"{self.provider} - {self.event_type} - {self.status}"
+
+    def mark_as_processed(self):
+        from django.utils import timezone
+        self.status = 'processed'
+        self.processed_at = timezone.now()
+        self.save()
+
+    def mark_as_failed(self, error_message):
+        from django.utils import timezone
+        self.status = 'failed'
+        self.error_message = error_message
+        self.processed_at = timezone.now()
+        self.save()
+
