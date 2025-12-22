@@ -172,7 +172,7 @@ REST_FRAMEWORK = {
 
 # CORS Configuration
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",  # Укажите порт, на котором работает ваш Vue.js
+    "http://localhost:5173",
     "http://127.0.0.1:5173",
     "https://domen.com",
     "https://www.domen.com",
@@ -289,3 +289,5 @@ CELERY_BEAT_SCHEDULE = {
 }
 
 STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY')
+STRIPE_WEBHOOK_SECRET = config('STRIPE_WEBHOOK_SECRET')
+STRIPE_PUBLISHABLE_KEY = config('STRIPE_PUBLISHABLE_KEY')

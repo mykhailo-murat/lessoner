@@ -188,6 +188,7 @@ def create_refund(request, payment_id):
                 if success:
                     refund.process_refund()
 
+                    # full refund
                     if refund.amount == payment.amount and payment.subscription:
                         PaymentService.cancel_subscription(payment.subscription)
 
@@ -207,3 +208,96 @@ def create_refund(request, payment_id):
             'error': 'Payment does not exist',
         }, status=status.HTTP_404_NOT_FOUND)
 
+
+@csrf_exempt
+@require_POST
+def stripe_webhook(request):
+    payload = request.body
+    sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
+
+    try:
+        event = stripe.Webhook.construct_event(payload, sig_header, settings.STRIPE_WEBHOOK_SECRET)
+    except ValueError:
+        return HttpResponse(status=400)
+    except stripe.error.SignatureVerificationError:
+        return HttpResponse(status=400)
+
+    success = WebhookService.process_stripe_webhook(event)
+    if success:
+        return HttpResponse(status=200)
+    else:
+        return HttpResponse(status=400)
+
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAdminUser])
+def payment_analytics(request):
+    from django.db.models import Count, Sum, Avg
+    from django.utils import timezone
+    from datetime import timedelta
+
+    total_payments = Payment.objects.count()
+    successful_payments = Payment.objects.filter(status='succeeded').count()
+    total_revenue = Payment.objects.filter(status='succeeded').aggregate(total=Sum('amount'))['total'] or 0
+
+    last_month = timezone.now() - timedelta(days=30)
+    monthly_payments = Payment.objects.filter(created_at__gte=last_month, status='succeeded')
+    monthly_revenue = monthly_payments.aggregate(total=Sum('amount'))['total'] or 0
+    monthly_count = monthly_payments.count()
+
+    avg_payment = Payment.objects.filter(status='succeeded').aggregate(avg=Avg('amount'))['avg'] or 0
+
+    active_subscriptions = Payment.objects.filter(status='succeeded', subscription__status='active').count()
+
+    return Response({
+        'total_payments': total_payments,
+        'successful_payments': successful_payments,
+        'success_rate': (successful_payments / total_payments * 100) if total_payments else 0,
+        'total_revenue': total_revenue,
+        'monthly_revenue': monthly_revenue,
+        'monthly_payments': monthly_count,
+        'average_payment': float(avg_payment),
+        'active_subscriptions': active_subscriptions,
+        'period': {
+            'from': last_month.isoformat(),
+            'to': timezone.now().isoformat()
+        }
+    })
+
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def user_payment_history(request):
+    payment = Payment.objects.filter(user=request.user).select_related('subscription', 'subscription__plan').order_by('-created_at')
+
+    serializer = PaymentSerializer(payment, many=True)
+    return Response({
+        'count': payment.count(),
+        'results': serializer.data,
+    })
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def retry_payment(request, payment_id):
+    try:
+        payment = get_object_or_404(Payment, id=payment_id, user=request.user, status='failed')
+
+        success_url = request.data.get('success_url', f'{settings.FRONTEND_URL}/payment/success?session_id={{CHECKOUT_SESSION_ID}}')
+        cancel_url = request.data.get('cancel_url', f'{settings.FRONTEND_URL}/payment/cancel')
+
+        session_data = StripeService.create_checkout_session(payment, success_url, cancel_url)
+        if session_data:
+            payment.status = 'processing'
+            payment.save()
+
+            response_serializer = StripeCheckoutSessionSerializer(session_data)
+            return Response(response_serializer.data)
+        else:
+            return Response({
+                'error': 'Failed to create checkout session',
+            }, status=status.HTTP_400_BAD_REQUEST)
+    except Payment.DoesNotExist:
+        return Response({
+            'error': 'Payment not found or cannot be processed',
+        }, status=status.HTTP_404_NOT_FOUND)

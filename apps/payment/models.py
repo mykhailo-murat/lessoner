@@ -27,6 +27,7 @@ class Payment(models.Model):
     amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     currency = models.CharField(max_length=3, default='USD')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES, default='stripe')
 
     stripe_payment_intent_id = models.CharField(max_length=255, null=True, blank=True)
     stripe_session_id = models.CharField(max_length=255, null=True, blank=True)
@@ -132,7 +133,7 @@ class Refund(models.Model):
         return f'Refund {self.id} - ${self.amount} for Payment ({self.payment.id})'
 
     @property
-    def is_partials(self):
+    def is_partial(self):
         return self.amount < self.payment.amount
 
     def process_refund(self):
